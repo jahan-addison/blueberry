@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "blueberry"
+version = "0.1.0"
+description = "Definite clause grammar to python3, C++17 parser generator"
+authors = ["Jahan Addison <info@jahanaddison.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.4.2"
+mypy = "^0.770"
+mypy_extensions = "^0.4.3"
+pytest-cov = "^2.8.1"
+flake8 = "^3.7.9"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
