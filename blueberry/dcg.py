@@ -1,6 +1,7 @@
 import re
 from enum import Enum
 from typing import Dict, Optional
+from mypy_extensions import TypedDict
 
 
 class Token(int, Enum):
@@ -28,15 +29,25 @@ class Token(int, Enum):
     Unknown = (13, None)
 
 
+class yylex_t(TypedDict, total=False):
+    """The TypedDict for a `yylex` data type. """
+    token: Token
+    data: Optional[str]  # The `yytext` data
+
+
 class Lexer:
     """ LL(1) Definite Clause Grammar Lexer """
     def __init__(self, source: str):
+        self._symbol_table: Dict[str, str] = {}
+        self.yylex: yylex_t = {
+            'token': Token.Unknown,
+            'data': None
+        }
+        self._source = source
         self._pointer = 0
         self._at: str
-        self._source = source
         self._rule = False
         self._terminals = False
-        self._symbol_table: Dict[str, str] = {}
 
     @property
     def pointer(self) -> str:
@@ -63,13 +74,14 @@ class Lexer:
         self._at = self._source[self._pointer - 1]
 
         self._skip_whitespace_and_comments()
-
+        self._reset()
         for name, lexeme in Token.__members__.items():
             if lexeme.label == self.pointer:
                 if lexeme == Token.OpenList:
                     self._terminals = True
                 if lexeme == Token.CloseList:
                     self._terminals = False
+                self._set_token(lexeme, self.pointer)
                 self._inc()
                 return lexeme
 
@@ -79,18 +91,24 @@ class Lexer:
 
         if term == '-->':
             self._rule = True
+            self._set_token(Token.Operator, term)
             return Token.Operator
 
         if re.match('[A-Za-z0-9_]+', term):
             peek = self._peek_next()
             if self._at == '(':
+                self._set_token(Token.Constant, term)
                 return Token.Constant
             if self._terminals:
+                self._set_token(Token.Terminal, term)
                 return Token.Terminal
             if self.pointer == '(':
+                self._set_token(Token.Functor, term)
                 return Token.Functor
             if self._rule or peek == '-->' or peek == ',':
+                self._set_token(Token.Rule, term)
                 return Token.Rule
+            self._set_token(Token.Constant, term)
             return Token.Constant
 
         return token or Token.Unknown
@@ -114,9 +132,11 @@ class Lexer:
             return '\r\n'
         elif self.pointer == '\n':
             return '\n'
+        elif self.pointer == '.':
+            return '.'
         elif self.pointer == ',':
             return ','
-        while self.pointer and not re.match(r'[,\t\r\n\{\}\[\]\(\) ]', self.pointer):
+        while self.pointer and not re.match(r'[,\t\r\n\{\}\[\]\(\)\. ]', self.pointer):
             term += self.pointer
             self._inc()
         return term
@@ -127,12 +147,29 @@ class Lexer:
             self._inc()
             self._inc()
             self._rule = False
+            self._set_token(Token.EOL, '\r\n')
             return Token.EOL
         elif term[0] == '\n':
             self._inc()
             self._rule = False
+            self._set_token(Token.EOL, '\n')
             return Token.EOL
         return None
+
+    def _reset(self) -> None:
+        """Reset scanner data. """
+        self.yylex = {
+            'token': Token.Unknown,
+            'data': None
+        }
+
+    def _set_token(self, token: Token, term: str) -> None:
+        """Set last token and scanner data. """
+        self._last = token
+        self.yylex = {
+            'token': token,
+            'data': term
+        }
 
     def _peek_next(self) -> str:
         """Peek one term.
@@ -142,7 +179,7 @@ class Lexer:
         self._skip_whitespace_and_comments()
         index: int = self._pointer
         size: int = len(self._source)
-        while index < size and not re.match(r'[,\t\r\n\{\}\[\]\(\) ]', self._source[index]):
+        while index < size and not re.match(r'[,\t\r\n\{\}\[\]\(\)\. ]', self._source[index]):
             term += self._source[index]
             index += 1
 
@@ -184,10 +221,11 @@ class Parser:
         pass
 
 
-# lexer = Lexer(r""" sentence --> pronoun(subject), verb_phrase. % a comment
-#  verb_phrase --> verb, pronoun(object).
-#  pronoun(subject) --> [he].
-#  pronoun(subject) --> [she, ze, they].""")
+lexer = Lexer(r""" sentence --> pronoun(subject), verb_phrase. % a comment
+ verb_phrase --> verb, pronoun(object).
+ pronoun(subject) --> [he].
+ pronoun(subject) --> [she, ze, they].""")
 
 # for test in lexer:
 #     print(test)
+#     print('yylex:', lexer.yylex)
