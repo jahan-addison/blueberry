@@ -221,10 +221,10 @@ class Parser:
         pass
 
 
-lexer = Lexer(r""" sentence --> pronoun(subject), verb_phrase. % a comment
- verb_phrase --> verb, pronoun(object).
- pronoun(subject) --> [he].
- pronoun(subject) --> [she, ze, they].""")
+# lexer = Lexer(r""" sentence --> pronoun(subject), verb_phrase. % a comment
+#  verb_phrase --> verb, pronoun(object).
+#  pronoun(subject) --> [he].
+#  pronoun(subject) --> [she, ze, they].""")
 
 # for test in lexer:
 #     print(test)
