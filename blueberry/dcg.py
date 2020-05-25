@@ -1,6 +1,6 @@
 from enum import Enum
-from collections import deque
-from typing import Dict, Optional, Union, List, Deque, overload, Iterable, cast, Any
+from collections import deque, OrderedDict
+from typing import Optional, Dict, Union, List, Deque, overload, Iterable, cast, Any
 from mypy_extensions import TypedDict
 import re
 
@@ -222,7 +222,7 @@ class Parser:
     def __init__(self, source: str) -> None:
         self._line = 1
         self.lexer: Lexer = Lexer(source)
-        self.rules: Dict[str, Rule_Set] = {}
+        self.rules: Dict[str, Rule_Set] = OrderedDict()
 
     def error(self, expected: str, found: Token) -> None:
         """Parser error.
@@ -334,13 +334,13 @@ class Parser:
         return stack
 
 
-# parser = Parser(r""" sentence --> pronoun(subject), verb_phrase.
-#  verb_phrase --> verb, pronoun(object).
-#  pronoun(subject) --> [he].
-#  pronoun(subject) --> [she].
-#  pronoun(object) --> [him].
-#  pronoun(object) --> [her].
-#  verb --> [likes].
-# """)
+parser = Parser(r""" sentence --> pronoun(subject), verb_phrase.
+ verb_phrase --> verb, pronoun(object).
+ pronoun(subject) --> [he].
+ pronoun(subject) --> [she].
+ pronoun(object) --> [him].
+ pronoun(object) --> [her].
+ verb --> [likes].
+""")
 
-# print(parser.parse())
+print(parser.parse())
