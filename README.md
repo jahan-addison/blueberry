@@ -17,12 +17,14 @@ And, more importantly:
 
 ```prolog
 % A list.
+
 as --> [].
 as --> [a], as.
 ```
 
 ```prolog
 % A tree.
+
 tree_nodes(nil) --> [].
 tree_nodes(node(Name, Left, Right)) -->
         tree_nodes(Left),
@@ -32,6 +34,7 @@ tree_nodes(node(Name, Left, Right)) -->
 
 ```prolog
 % A sentence with a pronoun and a verb phrase.
+
 sentence --> pronoun(subject), verb_phrase.
  verb_phrase --> verb, pronoun(object).
  pronoun(subject) --> [he].
