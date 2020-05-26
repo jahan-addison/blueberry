@@ -48,7 +48,6 @@ The end-goal is a provided cli tool to code-generate parser generators for C++17
 
 ## What's Left
 
-* ☑ DCG Lexer
 * ☑ DCG Parser
 * 🔧 DCG Transformer and (lazy) evaluation
 * 🔧 C++17 algebra
