@@ -15,10 +15,14 @@ And, more importantly:
 
 ## Examples
 
+> A list:
+
 ```prolog
 as --> [].
 as --> [a], as.
 ```
+
+> A tree:
 
 ```prolog
 tree_nodes(nil) --> [].
@@ -28,6 +32,7 @@ tree_nodes(node(Name, Left, Right)) -->
         tree_nodes(Right).
 ```
 
+> A sentence with a pronoun and a verb phrase:
 ```prolog
 sentence --> pronoun(subject), verb_phrase.
  verb_phrase --> verb, pronoun(object).
