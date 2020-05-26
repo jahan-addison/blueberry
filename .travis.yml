@@ -1,0 +1,18 @@
+language: python
+dist: xenial
+python:
+  - "3.7"
+
+stages:
+  - Quality
+
+before_install:
+  - pip install poetry
+
+install:
+  - poetry install
+
+jobs:
+  include:
+    - name: tests
+      script: make test

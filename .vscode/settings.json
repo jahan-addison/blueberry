@@ -1,0 +1,8 @@
+{
+    "python.linting.mypyEnabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.enabled": true,
+    "python.linting.mypyPath": "~/.mypyls/bin/mypyls",
+    "python.linting.lintOnSave": true,
+    "editor.renderLineHighlight": "all"
+}

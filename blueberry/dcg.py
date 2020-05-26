@@ -7,6 +7,11 @@ import re
 Rule_Set = Deque[Union[str, Any]]
 
 
+class DCGParserError(Exception):
+    """DCG Parser Exception class. """
+    pass
+
+
 class Token(int, Enum):
     label: Optional[str]
 
@@ -33,9 +38,9 @@ class Token(int, Enum):
 
 
 class yylex_t(TypedDict, total=False):
-    """The TypedDict for a `yylex` data type. """
+    """The `yytext` data type. """
     token: Token
-    data: str  # The `yytext` data
+    data: str
 
 
 class Lexer:
@@ -69,13 +74,13 @@ class Lexer:
         return self
 
     def __next__(self) -> Token:
+        """Scan and retrieve next token on each iteration. """
         token: Optional[Token] = None
         if not self.pointer:
             raise StopIteration('Lexer Iterator out of bounds')
 
         self._at = self._source[self._pointer - 1]
         self._last = self._pointer
-
         self._skip_whitespace_and_comments()
         self._reset()
         for name, lexeme in Token.__members__.items():
@@ -91,7 +96,6 @@ class Lexer:
         term = self._read_term()
 
         token = token or self._eol_token(term)
-
         if term == '-->':
             self._rule = True
             self._set_token(Token.Operator, term)
@@ -126,7 +130,8 @@ class Lexer:
 
     def _read_term(self) -> str:
         """Read next term.
-        Read the next term from the source string, skipping all comments.
+
+        Read the next term from the source string, skipping all whitespace and comments.
         """
         term: str = ''
         self._skip_whitespace_and_comments()
@@ -176,6 +181,7 @@ class Lexer:
 
     def _peek_next(self) -> str:
         """Peek one term.
+
         Peek ahead one term to infer lexical sequence.
         """
         term: str = ''
@@ -190,6 +196,7 @@ class Lexer:
 
     def _skip_whitespace_and_comments(self) -> None:
         """Skip whitespace.
+
         Skips all whitespace and comments recursively until the beginning
         of the next term.
         """
@@ -213,12 +220,34 @@ class Lexer:
                 skip = False
 
 
-class DCGParserError(Exception):
-    """DCG Parser Exception class. """
-    pass
-
-
 class Parser:
+    """Parser of Definite Clause Grammars (from Prolog).
+
+    The parser uses the LL(1) lexer and parses a grammar a rule at a time.
+    That is, line by line:
+
+    ```head --> body.```
+    Example:
+    ```
+        np --> det,n.
+        vp --> v,np.
+        vp --> v.
+        det --> [the].
+        det --> [a].
+        n --> [woman].
+        n --> [man].
+        v --> [shoots].
+    ```
+    Example:
+    ```
+        verb_phrase(vp(V,NP)) --> verb(V), noun_phrase(NP).
+        det(d(the)) --> [the].
+        det(d(a)) --> [a].
+        noun(n(bat)) --> [bat].
+        noun(n(cat)) --> [cat].
+        verb(v(eats)) --> [eats]
+    ```
+    """
     def __init__(self, source: str) -> None:
         self._line = 1
         self.lexer: Lexer = Lexer(source)
@@ -226,10 +255,11 @@ class Parser:
 
     def error(self, expected: str, found: Token) -> None:
         """Parser error.
-        Provides supportive parser error details data based on
-        location in the lexer.
+
+        Provides supportive parser error details
+        data based on location in the lexer.
          """
-        location = self.lexer._source[self.lexer._last:self.lexer.index].replace('\n', '')
+        location = self.lexer._source[self.lexer._last:self.lexer.index or 15].replace('\n', '')
         raise DCGParserError(
             f'Parser failed near "{location}", '
             f'expected one of token "{expected}", '
@@ -237,6 +267,11 @@ class Parser:
             f'on line {self._line}.')
 
     def parse(self) -> Dict[str, Rule_Set]:
+        """Parses the Definite clause grammar.
+
+        Parse line-by-line each rule until the lexer is complete. Builds
+        a rule table (tree) for post-analysis and visitor transformation.
+        """
         while self.rule():
             pass
         return self.rules
@@ -248,8 +283,9 @@ class Parser:
     def take(self, test: Token) -> yylex_t: ...
 
     def take(self, test: Union[Token, List[Token]]) -> yylex_t:
-        """Expect a token or one-of a set of tokens.
-        Tests the next token and runs expectation test.
+        """Expect a token or one of a set of tokens.
+
+        Takes the next token and runs expectation test.
         Raises `DCGParserError` on failure.
         """
         lexer = self.lexer
@@ -265,13 +301,23 @@ class Parser:
         return lexer.yylex
 
     def rule(self) -> bool:
+        """Parse a rule.
+
+        Parses a rule of the form:
+
+            ```head --> body.```
+
+        Each rule designates a line. Returns false when the lexer is complete.
+        """
         lexer = self.lexer
         try:
             # skip empty lines
             while lexer.pointer == '\r' or lexer.pointer == '\n':
                 self.take(Token.EOL)
                 self._line += 1
+            # rule head (entry)
             entry = ' '.join(cast(Iterable[str], self.head()))
+            # rule body
             self.rules[entry] = self.body()
             self.take(Token.EOL)
             self._line += 1
@@ -280,6 +326,11 @@ class Parser:
             return False  # Done.
 
     def head(self) -> Rule_Set:
+        """Parse the head of a rule.
+
+        Parses the entry or "lvalue" of a rule. Note that the head may
+        be the definition of a functor, with each argument the difference list.
+        """
         lexer = self.lexer
         entry: Rule_Set = deque()
         self.take([Token.Rule, Token.Functor])
@@ -296,6 +347,11 @@ class Parser:
         return entry
 
     def body(self, start: Optional[yylex_t] = None) -> Rule_Set:
+        """Parse the body of a rule.
+
+        Rule body consists of terminals and non-terminals delimited by ","
+        known as the "and then" operator -- rules constitute an f-algebra.
+        """
         stack: Rule_Set = deque()
         current = start['token'] if start else self.take([Token.OpenList, Token.Rule, Token.Functor])['token']
         lexer = self.lexer
@@ -309,7 +365,7 @@ class Parser:
             self.take(Token.End)
 
         elif current == Token.Functor:
-            # functor rule
+            # functor non-terminal
             stack.append(lexer.yylex['data'])
             current = self.take(Token.Open)['token']
             while current != Token.Close:
@@ -322,7 +378,7 @@ class Parser:
                 stack.append(self.body())
 
         elif current == Token.Rule:
-            # normal rule
+            # rule non-terminal
             stack.append(lexer.yylex['data'])
             while current != Token.End:
                 self.take([Token.Rule, Token.AndThen, Token.Functor, Token.End])
