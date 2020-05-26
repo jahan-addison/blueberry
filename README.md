@@ -44,7 +44,7 @@ We can additionally query the grammars for all possible combinations.
 
 ## Usage
 
-The end-goal is a provided cli tool to code-generate parser generators for C++17 and python 3 based on a provided dcg grammar. The generate code will be able to query and generate combinations just as Prolog, and their own algebraic implementation detail.
+The end-goal is a provided cli tool to code-generate parser generators for C++17 and python 3 based on a provided dcg grammar. The generated code will be able to query a language and combinations just as Prolog clauses, in their own algebraic implementation detail.
 
 ## What's Left
 
